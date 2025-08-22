@@ -1,7 +1,7 @@
 variable "gcp_project_id" {
   description = "The GCP project ID to deploy resources into."
   type        = string
-  default     = "vollrath-gaming"
+  default     = "example-movie-night"
 }
 
 variable "gcp_region" {
