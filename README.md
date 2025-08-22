@@ -67,6 +67,13 @@ This tells Terraform to use your new project ID instead of the default one in yo
 
 Before running Terraform, you must create your secrets and authenticate your local environment.
 
+Enable the Secret Manager and Storage API's:
+
+```console
+gcloud services enable secretmanager.googleapis.com
+gcloud services enable storage-api.googleapis.com
+```
+
 Create the GoDaddy API Key Secret:
 
 ```console
@@ -83,6 +90,13 @@ Provide Application Default Credentials for Terraform:
 
 ```console
 gcloud auth application-default login
+```
+
+Create storage bucket for Terraform state and enable versioning:
+
+```console
+gcloud storage buckets create gs://example-movie-night-tfstate
+gcloud storage buckets update gs://example-movie-night-tfstate --versioning
 ```
 
 ## 5. Deploy with Terraform

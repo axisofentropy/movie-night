@@ -1,5 +1,10 @@
 # Configure the Google Cloud provider
 terraform {
+  backend "gcs" {
+    bucket  = "movie-night-vollrath-tfstate"
+    prefix  = "state" # A folder within the bucket for this project's state
+  }
+
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -31,6 +36,10 @@ resource "google_storage_bucket" "startup_script_bucket" {
   name          = "${var.gcp_project_id}-movie-night-scripts"
   location      = var.gcp_region
   force_destroy = true
+
+  versioning {
+    enabled = true
+  }
 
   # Explicitly depend on the APIs being enabled first.
   depends_on = [google_project_service.apis]
@@ -64,18 +73,21 @@ resource "google_project_iam_member" "secret_accessor" {
 # --- INSTANCE TEMPLATE ---
 resource "google_compute_instance_template" "movie_night_template" {
   name_prefix  = "movie-night-template-"
-  machine_type = "e2-medium"
+  machine_type = "e2-small"
   region       = var.gcp_region
 
   disk {
     source_image = "cos-cloud/cos-stable"
     auto_delete  = true
     boot         = true
+    disk_size_gb = 20
   }
 
   network_interface {
     network = "default"
-    access_config {}
+    access_config {
+        network_tier = "STANDARD"
+    }
   }
 
   service_account {
@@ -85,6 +97,8 @@ resource "google_compute_instance_template" "movie_night_template" {
 
   metadata = {
     startup-script-url = "gs://${google_storage_bucket.startup_script_bucket.name}/${google_storage_bucket_object.startup_script.name}"
+    google-logging-enabled    = "true"
+    google-monitoring-enabled = "true"
   }
 
   depends_on = [google_project_service.apis]
