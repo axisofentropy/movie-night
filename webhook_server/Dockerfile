@@ -3,8 +3,7 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Create directories for scripts and downloads
-RUN mkdir /scripts
+# Create directories for downloads
 RUN mkdir /downloads
 
 # Copy and install dependencies
@@ -14,10 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code and scripts
 COPY app.py .
 COPY blueprints/ ./blueprints/
-COPY scripts/ /scripts/
-
-# Make scripts executable
-RUN chmod +x /scripts/*.sh
 
 # Expose the port the app runs on
 EXPOSE 5000

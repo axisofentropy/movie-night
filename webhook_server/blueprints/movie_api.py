@@ -1,7 +1,9 @@
+import os
 import subprocess
 from functools import wraps
 from flask import Blueprint, request, current_app, abort, jsonify
-import requests # Import the requests library
+import requests
+import docker # Import the docker library
 
 # ... (Blueprint object and require_token decorator are the same) ...
 movie_api_blueprint = Blueprint('movie_api', __name__)
@@ -15,50 +17,68 @@ def require_token(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
+# ... (download_movie function is the same) ...
 @movie_api_blueprint.route('/download', methods=['POST'])
 @require_token
 def download_movie():
-    """
-    Webhook to download a movie directly using Python.
-    Expects the raw request body to be the URL.
-    """
     movie_url = request.data.decode('utf-8')
     if not movie_url:
         abort(400, description="Bad Request: The request body cannot be empty.")
-
     output_path = "/downloads/current_movie.mp4"
-    
     try:
-        print(f"Starting download from {movie_url}...")
-        # Use a streaming request to handle large files efficiently
         with requests.get(movie_url, stream=True) as r:
-            r.raise_for_status() # Will raise an exception for bad status codes (4xx or 5xx)
+            r.raise_for_status()
             with open(output_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192): 
                     f.write(chunk)
-        
-        print(f"Download finished. File saved to {output_path}")
         return jsonify(status="success", message=f"Download complete for {movie_url}"), 200
-
     except requests.exceptions.RequestException as e:
         return jsonify(status="error", message="Download failed.", details=str(e)), 500
     except Exception as e:
         return jsonify(status="error", message="An unexpected error occurred.", details=str(e)), 500
 
-# ... (start_stream function remains the same, using subprocess) ...
+
 @movie_api_blueprint.route('/start', methods=['POST'])
 @require_token
 def start_stream():
     """
-    Webhook to start the ffmpeg container via the Docker proxy.
+    Webhook to start the ffmpeg container directly using the Docker Python SDK.
     """
+    movie_path_internal = "/downloads/current_movie.mp4"
+    
+    # This path comes from the startup script env var
+    movies_dir_host = os.environ.get("MOVIES_DIR", "/home/chronos/movies") 
+
+    # Check if the movie file exists inside the container
+    if not os.path.exists(movie_path_internal):
+        return jsonify(status="error", message=f"Movie file not found at {movie_path_internal}. Please download it first."), 404
+
     try:
-        # Execute the stream start script
-        result = subprocess.run(
-            ["/scripts/start_stream.sh"],
-            check=True, text=True, capture_output=True
+        # The client will automatically use the DOCKER_HOST env var to connect to the proxy
+        client = docker.from_env()
+
+        # Define the ffmpeg command as a list of strings
+        ffmpeg_command = [
+            "-re", "-i", movie_path_internal,
+            "-c:v", "copy", "-c:a", "copy",
+            "-f", "rtsp", "-rtsp_transport", "tcp", "rtsp://mediamtx:8554/stream"
+        ]
+
+        print("Starting ffmpeg container...")
+        # Run the container, translating docker run flags to Python arguments
+        container = client.containers.run(
+            image="linuxserver/ffmpeg",
+            command=ffmpeg_command,
+            name="ffmpeg-streamer",
+            network="movie-night-net",
+            volumes={movies_dir_host: {'bind': '/downloads', 'mode': 'ro'}},
+            auto_remove=True,
+            detach=True  # Run in the background
         )
-        return jsonify(status="success", message="Stream start command issued.", output=result.stdout), 200
-    except subprocess.CalledProcessError as e:
-        return jsonify(status="error", message="Start stream script failed.", details=e.stderr), 500
+        print(f"Started ffmpeg container with ID: {container.id}")
+        return jsonify(status="success", message="Stream container started.", container_id=container.id), 200
+
+    except docker.errors.APIError as e:
+        return jsonify(status="error", message="Docker API Error.", details=str(e)), 500
+    except Exception as e:
+        return jsonify(status="error", message="An unexpected error occurred.", details=str(e)), 500
