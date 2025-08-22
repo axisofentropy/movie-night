@@ -17,13 +17,11 @@ echo "Found movie file. Starting ffmpeg container via proxy..."
 docker run \
   --rm \
   --network="${NETWORK_NAME}" \
-  -v "${MOVIES_DIR:-/opt/movies}:/downloads:ro" \
+  -v "${MOVIES_DIR:-/home/chronos/movies}:/downloads:ro" \
   --name ffmpeg-streamer \
   linuxserver/ffmpeg -hide_banner -loglevel error \
   -re -i /downloads/current_movie.mp4 \
   -c:v copy -c:a copy \
   -f rtsp -rtsp_transport tcp rtsp://mediamtx:8554/stream
 
-# Note: The above is a simple ffmpeg command. You can replace it
-# with the more complex transcoding one from your original script.
 echo "ffmpeg container started."
