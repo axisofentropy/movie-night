@@ -1,12 +1,11 @@
 import subprocess
 from functools import wraps
 from flask import Blueprint, request, current_app, abort, jsonify
+import requests # Import the requests library
 
-# Create a Blueprint object
+# ... (Blueprint object and require_token decorator are the same) ...
 movie_api_blueprint = Blueprint('movie_api', __name__)
 
-# --- Security Decorator ---
-# This checks the token for any route it's applied to.
 def require_token(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -16,28 +15,38 @@ def require_token(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Webhook Routes ---
+
 @movie_api_blueprint.route('/download', methods=['POST'])
 @require_token
 def download_movie():
     """
-    Webhook to download a movie.
+    Webhook to download a movie directly using Python.
     Expects the raw request body to be the URL.
     """
     movie_url = request.data.decode('utf-8')
     if not movie_url:
         abort(400, description="Bad Request: The request body cannot be empty.")
+
+    output_path = "/downloads/current_movie.mp4"
     
     try:
-        # Execute the download script, passing the URL as an argument
-        subprocess.run(
-            ["/scripts/download_movie.sh", movie_url],
-            check=True, text=True, capture_output=True
-        )
-        return jsonify(status="success", message=f"Download initiated for {movie_url}"), 200
-    except subprocess.CalledProcessError as e:
-        return jsonify(status="error", message="Download script failed.", details=e.stderr), 500
+        print(f"Starting download from {movie_url}...")
+        # Use a streaming request to handle large files efficiently
+        with requests.get(movie_url, stream=True) as r:
+            r.raise_for_status() # Will raise an exception for bad status codes (4xx or 5xx)
+            with open(output_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192): 
+                    f.write(chunk)
+        
+        print(f"Download finished. File saved to {output_path}")
+        return jsonify(status="success", message=f"Download complete for {movie_url}"), 200
 
+    except requests.exceptions.RequestException as e:
+        return jsonify(status="error", message="Download failed.", details=str(e)), 500
+    except Exception as e:
+        return jsonify(status="error", message="An unexpected error occurred.", details=str(e)), 500
+
+# ... (start_stream function remains the same, using subprocess) ...
 @movie_api_blueprint.route('/start', methods=['POST'])
 @require_token
 def start_stream():
