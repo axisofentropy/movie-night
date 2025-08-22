@@ -1,0 +1,41 @@
+variable "gcp_project_id" {
+  description = "The GCP project ID to deploy resources into."
+  type        = string
+  default     = "vollrath-gaming"
+}
+
+variable "gcp_region" {
+  description = "The GCP region for the resources."
+  type        = string
+  default     = "us-east1"
+}
+
+variable "gcp_zone" {
+  description = "The GCP zone for the instance group."
+  type        = string
+  default     = "us-east1-b"
+}
+
+variable "domain_name" {
+  description = "The domain name for the DDNS update."
+  type        = string
+  default     = "axisofentropy.net"
+}
+
+variable "hostname" {
+  description = "The hostname for the DDNS update."
+  type        = string
+  default     = "movienight"
+}
+
+# NEW: A list of the APIs that this project requires.
+variable "gcp_apis" {
+  description = "The list of GCP APIs to enable on the project."
+  type        = list(string)
+  default = [
+    "compute.googleapis.com",
+    "storage.googleapis.com",
+    "secretmanager.googleapis.com",
+    "iam.googleapis.com",
+  ]
+}
