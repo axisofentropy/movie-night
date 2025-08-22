@@ -70,6 +70,18 @@ resource "google_project_iam_member" "secret_accessor" {
   member  = "serviceAccount:${google_service_account.movie_night_sa.email}"
 }
 
+resource "google_project_iam_member" "logging_writer" {
+  project = var.gcp_project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.movie_night_sa.email}"
+}
+
+resource "google_project_iam_member" "monitoring_writer" {
+  project = var.gcp_project_id
+  role    = "roles/monitoring.metricWriter"
+  member  = "serviceAccount:${google_service_account.movie_night_sa.email}"
+}
+
 # --- INSTANCE TEMPLATE ---
 resource "google_compute_instance_template" "movie_night_template" {
   name_prefix  = "movie-night-template-"
@@ -113,6 +125,14 @@ resource "google_compute_instance_group_manager" "movie_night_mig" {
   version {
     instance_template = google_compute_instance_template.movie_night_template.id
   }
+
+  lifecycle {
+    ignore_changes = [
+        target_size,
+    ]
+  }
+
+  depends_on = [google_project_service.apis]
 }
 
 # --- FIREWALL RULES ---
