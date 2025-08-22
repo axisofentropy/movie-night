@@ -212,3 +212,30 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Terraform cache and downloaded modules/providers
+.terraform/
+
+# Variable files (especially sensitive ones)
+*.tfvars
+*.tfvars.json
+
+# Terraform CLI configuration files
+.terraformrc
+terraform.rc
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform plan files
+*.tfplan
+
+# Sensitive files
+*.pem
+*.key
+*.pub
