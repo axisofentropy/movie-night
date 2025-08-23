@@ -4,6 +4,11 @@ set -e
 # ==============================================================================
 # 0. FETCH CONFIGURATION AND SECRETS
 # ==============================================================================
+CERT_DIR="/home/chronos/letsencrypt"
+MOVIES_DIR="/home/chronos/movies"
+NETWORK_NAME="movie-night-net"
+WEBHOOK_IMAGE_NAME="ghcr.io/axisofentropy/movie-night-webhook:latest"
+
 echo "--- Fetching Configuration and Secrets ---"
 # First, get an auth token from the metadata server
 GCP_PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/project/project-id)
@@ -53,7 +58,7 @@ docker run --rm \
   -p 80:80 \
   -v "${CERT_DIR}:/etc/letsencrypt" \
   certbot/certbot certonly --standalone \
-  --non-interactive --agree-tos -m "${EMAIL}" \
+  --non-interactive --agree-tos --register-unsafely-without-email \
   -d "${DOMAIN}"
 
 echo "Certificate generated successfully."
@@ -61,9 +66,6 @@ echo "Certificate generated successfully."
 # ==============================================================================
 # 2. CONTAINER CONFIGURATION & DEPLOYMENT
 # ==============================================================================
-MOVIES_DIR="/home/chronos/movies"
-NETWORK_NAME="movie-night-net"
-WEBHOOK_IMAGE_NAME="ghcr.io/axisofentropy/movie-night-webhook:latest"
 
 mkdir -p "${MOVIES_DIR}"
 chown chronos:chronos "${MOVIES_DIR}"

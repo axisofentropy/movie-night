@@ -116,6 +116,10 @@ resource "google_compute_instance_template" "movie_night_template" {
     hostname                  = var.hostname
   }
 
+  lifecycle {
+    create_before_destroy = true
+  }
+
   depends_on = [google_project_service.apis]
 }
 
@@ -139,12 +143,12 @@ resource "google_compute_instance_group_manager" "movie_night_mig" {
 }
 
 # --- FIREWALL RULES ---
-resource "google_compute_firewall" "allow_webhook" {
-  name    = "allow-movie-night-webhook"
+resource "google_compute_firewall" "allow_https_and_challenge" {
+  name    = "allow-movie-night-https"
   network = "default"
   allow {
     protocol = "tcp"
-    ports    = ["5000"]
+    ports    = ["80", "443"] # Port 80 for challenge, 443 for HTTPS
   }
   source_ranges = ["0.0.0.0/0"]
   depends_on    = [google_project_service.apis]
