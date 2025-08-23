@@ -19,7 +19,7 @@ variable "gcp_zone" {
 variable "domain_name" {
   description = "The domain name for the DDNS update."
   type        = string
-  default     = "axisofentropy.net"
+  default     = "example.com"
 }
 
 variable "hostname" {

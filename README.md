@@ -130,3 +130,21 @@ gcloud compute instance-groups managed resize movie-night-mig \
     --size=1 \
     --zone=us-east1-b
 ```
+
+Download a movie file to the VM by making an HTTP POST request to the webhook service:
+
+```console
+curl -X POST http://movienight.example.com:5000/movie/download \
+  -H "X-Auth-Token: $(gcloud secrets versions access latest --secret="webhook-secret-token" --project="example-movie-night")" \
+  -H "Content-Type: text/plain" \
+  --data-raw 'https://archive.org/download/public-domain-archive/Space%20Shuttle%20Launch%20_%20Free%20Public%20Domain%20Video%281080P_HD%29.mp4'
+```
+
+Start streaming the movie:
+
+```console
+curl -X POST http://movienight.example.com:5000/movie/start \
+  -H "X-Auth-Token: $(gcloud secrets versions access latest --secret="webhook-secret-token" --project="example-movie-night")"
+```
+
+You and your friends can watch the movie together in most web browsers: http://movienight.example.com:8888/
