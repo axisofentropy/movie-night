@@ -111,6 +111,9 @@ resource "google_compute_instance_template" "movie_night_template" {
     startup-script-url = "gs://${google_storage_bucket.startup_script_bucket.name}/${google_storage_bucket_object.startup_script.name}"
     google-logging-enabled    = "true"
     google-monitoring-enabled = "true"
+
+    domain-name               = var.domain_name
+    hostname                  = var.hostname
   }
 
   depends_on = [google_project_service.apis]
