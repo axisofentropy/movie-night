@@ -148,24 +148,15 @@ resource "google_compute_instance_group_manager" "movie_projector_mig" {
   depends_on = [google_project_service.apis]
 }
 
-# --- FIREWALL RULES ---
-resource "google_compute_firewall" "allow_https_and_challenge" {
-  name    = "allow-movie-night-https"
+# --- FIREWALL RULE ---
+# A single rule to manage all ports for the movie night service
+resource "google_compute_firewall" "allow_movie_night_traffic" {
+  name    = "allow-movie-night-traffic"
   network = "default"
   allow {
     protocol = "tcp"
-    ports    = ["80", "443", "4443"] # Port 80 for challenge, 443 for HTTPS
-  }
-  source_ranges = ["0.0.0.0/0"]
-  depends_on    = [google_project_service.apis]
-}
-
-resource "google_compute_firewall" "allow_mediamtx" {
-  name    = "allow-movie-night-mediamtx"
-  network = "default"
-  allow {
-    protocol = "tcp"
-    ports    = ["443", "8888", "8554"]
+    # Port 80 (Certbot), 443 (mediamtx), 4443 (webhook), 8554 (RTSP)
+    ports    = ["80", "443", "4443", "8554"]
   }
   source_ranges = ["0.0.0.0/0"]
   depends_on    = [google_project_service.apis]

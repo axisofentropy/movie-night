@@ -239,3 +239,6 @@ crash.*.log
 *.pem
 *.key
 *.pub
+
+# output to Gemini
+project_context.txt
