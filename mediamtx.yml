@@ -1,0 +1,22 @@
+# https://github.com/bluenviron/mediamtx/blob/main/mediamtx.yml
+
+metrics: yes
+
+# Web server (HLS) configuration
+hlsAddress: :443
+hlsEncryption: yes
+#hlsServerKey: /certs/privkey.pem
+#hlsServerCert: /certs/fullchain.pem
+hlsAlwaysRemux: yes
+hlsVariant: fmp4
+# These CORS headers are required by Chromecast
+hlsAllowOrigin: '*'
+
+# Enable publishing and reading streams with the RTSP protocol.
+rtsp: yes
+rtspAddress: :8554
+rtspEncryption: "no"
+
+# Default path settings
+paths:
+  all_others:

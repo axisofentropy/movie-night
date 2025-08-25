@@ -32,8 +32,8 @@ resource "google_project_service" "apis" {
 }
 
 # --- GCS BUCKET FOR STARTUP SCRIPT ---
-resource "google_storage_bucket" "startup_script_bucket" {
-  name          = "${var.gcp_project_id}-movie-night-scripts"
+resource "google_storage_bucket" "projector_vm_config" {
+  name          = "${var.gcp_project_id}-movie-projector-scripts"
   location      = var.gcp_region
   force_destroy = true
 
@@ -47,44 +47,50 @@ resource "google_storage_bucket" "startup_script_bucket" {
 
 resource "google_storage_bucket_object" "startup_script" {
   name   = "startup.sh"
-  bucket = google_storage_bucket.startup_script_bucket.name
+  bucket = google_storage_bucket.projector_vm_config.name
   source = "${path.module}/startup-script.sh"
 }
 
+resource "google_storage_bucket_object" "mediamtx_config" {
+  name   = "mediamtx.yml"
+  bucket = google_storage_bucket.projector_vm_config.name
+  source = "${path.module}/mediamtx.yml"
+}
+
 # --- SERVICE ACCOUNT & IAM ---
-resource "google_service_account" "movie_night_sa" {
-  account_id   = "movie-night-vm-sa"
+resource "google_service_account" "movie_projector_sa" {
+  account_id   = "movie-projector-sa"
   display_name = "Service Account for Movie Night VM"
   depends_on   = [google_project_service.apis]
 }
 
 resource "google_storage_bucket_iam_member" "startup_script_reader" {
-  bucket = google_storage_bucket.startup_script_bucket.name
+  bucket = google_storage_bucket.projector_vm_config.name
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.movie_night_sa.email}"
+  member = "serviceAccount:${google_service_account.movie_projector_sa.email}"
 }
 
 resource "google_project_iam_member" "secret_accessor" {
   project = var.gcp_project_id
   role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.movie_night_sa.email}"
+  member  = "serviceAccount:${google_service_account.movie_projector_sa.email}"
 }
 
 resource "google_project_iam_member" "logging_writer" {
   project = var.gcp_project_id
   role    = "roles/logging.logWriter"
-  member  = "serviceAccount:${google_service_account.movie_night_sa.email}"
+  member  = "serviceAccount:${google_service_account.movie_projector_sa.email}"
 }
 
 resource "google_project_iam_member" "monitoring_writer" {
   project = var.gcp_project_id
   role    = "roles/monitoring.metricWriter"
-  member  = "serviceAccount:${google_service_account.movie_night_sa.email}"
+  member  = "serviceAccount:${google_service_account.movie_projector_sa.email}"
 }
 
 # --- INSTANCE TEMPLATE ---
-resource "google_compute_instance_template" "movie_night_template" {
-  name_prefix  = "movie-night-template-"
+resource "google_compute_instance_template" "movie_projector_template" {
+  name_prefix  = "movie-projector-template-"
   machine_type = "e2-small"
   region       = var.gcp_region
 
@@ -103,12 +109,12 @@ resource "google_compute_instance_template" "movie_night_template" {
   }
 
   service_account {
-    email  = google_service_account.movie_night_sa.email
+    email  = google_service_account.movie_projector_sa.email
     scopes = ["cloud-platform"]
   }
 
   metadata = {
-    startup-script-url = "gs://${google_storage_bucket.startup_script_bucket.name}/${google_storage_bucket_object.startup_script.name}"
+    startup-script-url = "gs://${google_storage_bucket.projector_vm_config.name}/${google_storage_bucket_object.startup_script.name}"
     google-logging-enabled    = "true"
     google-monitoring-enabled = "true"
 
@@ -124,13 +130,13 @@ resource "google_compute_instance_template" "movie_night_template" {
 }
 
 # --- INSTANCE GROUP ---
-resource "google_compute_instance_group_manager" "movie_night_mig" {
-  name               = "movie-night-mig"
+resource "google_compute_instance_group_manager" "movie_projector_mig" {
+  name               = "movie-projector-mig"
   zone               = var.gcp_zone
-  base_instance_name = "movienight-vm"
+  base_instance_name = "movie-projector-vm"
   target_size        = 0
   version {
-    instance_template = google_compute_instance_template.movie_night_template.id
+    instance_template = google_compute_instance_template.movie_projector_template.id
   }
 
   lifecycle {
@@ -148,7 +154,7 @@ resource "google_compute_firewall" "allow_https_and_challenge" {
   network = "default"
   allow {
     protocol = "tcp"
-    ports    = ["80", "443"] # Port 80 for challenge, 443 for HTTPS
+    ports    = ["80", "443", "4443"] # Port 80 for challenge, 443 for HTTPS
   }
   source_ranges = ["0.0.0.0/0"]
   depends_on    = [google_project_service.apis]
@@ -159,7 +165,7 @@ resource "google_compute_firewall" "allow_mediamtx" {
   network = "default"
   allow {
     protocol = "tcp"
-    ports    = ["8888", "8554"]
+    ports    = ["443", "8888", "8554"]
   }
   source_ranges = ["0.0.0.0/0"]
   depends_on    = [google_project_service.apis]
