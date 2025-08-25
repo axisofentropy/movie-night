@@ -126,7 +126,7 @@ Terraform will show you the plan again and ask for confirmation. Type yes and pr
 Once terraform apply finishes successfully, your entire infrastructure—including the GCS bucket, service account, instance template, and firewall rules—will be live and ready. You can then scale your instance group to 1 to start the movie night VM.
 
 ```console
-gcloud compute instance-groups managed resize movie-night-mig \
+gcloud compute instance-groups managed resize movie-projector-mig \
     --size=1 \
     --zone=us-east1-b
 ```
