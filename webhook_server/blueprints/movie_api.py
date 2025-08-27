@@ -68,7 +68,7 @@ def start_stream():
 
     try:
         # The webhook now talks to the mediamtx API on the internal docker network
-        mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/patch/{path_name}"
+        mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/add/{path_name}"
         
         print(f"Sending configuration to mediamtx API: {mediamtx_api_url}")
         response = requests.post(mediamtx_api_url, json=config_payload)
