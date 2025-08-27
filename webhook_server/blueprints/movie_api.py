@@ -25,12 +25,19 @@ def download_movie():
     if not movie_url:
         abort(400, description="Bad Request: The request body cannot be empty.")
     output_path = "/downloads/current_movie.mp4"
+
+    # NEW: Define a common User-Agent header to mimic a browser.
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
     try:
-        with requests.get(movie_url, stream=True) as r:
+        with requests.get(movie_url, stream=True, headers=headers, allow_redirects=True) as r:
             r.raise_for_status()
             with open(output_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192): 
                     f.write(chunk)
+        print(f"Download finished. File saved to {output_path}")
         return jsonify(status="success", message=f"Download complete for {movie_url}"), 200
     except requests.exceptions.RequestException as e:
         return jsonify(status="error", message="Download failed.", details=str(e)), 500
