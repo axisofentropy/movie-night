@@ -8,6 +8,7 @@ set -e
 # to gunicorn, in this case "app:app".
 exec gunicorn \
     --bind "0.0.0.0:443" \
+    --timeout 300 \
     --certfile="/certs/live/${DOMAIN}/fullchain.pem" \
     --keyfile="/certs/live/${DOMAIN}/privkey.pem" \
     "$@"
