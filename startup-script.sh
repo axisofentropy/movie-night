@@ -142,6 +142,7 @@ docker run -d --restart=always \
   --network ${NETWORK_NAME} \
   -p 443:443 -p 8554:8554 -p 1935:1935 -p 8889:8889 -p 9997:9997 \
   -v "${MEDIAMTX_CONFIG_DIR}/mediamtx.yml:/mediamtx.yml:ro" \
+  -v "${MOVIES_DIR}:/movies:ro" \
   -v "${CERT_DIR}:/certs:ro" \
   -e MTX_HLSSERVERKEY="/certs/live/${DOMAIN}/privkey.pem" \
   -e MTX_HLSSERVERCERT="/certs/live/${DOMAIN}/fullchain.pem" \
@@ -152,7 +153,6 @@ docker run -d --restart=always \
   --name webhook-server \
   --network ${NETWORK_NAME} \
   -p 4443:443 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
   -v "${MOVIES_DIR}:/downloads" \
   -v "${CERT_DIR}:/certs:ro" \
   -e SECRET_TOKEN="${SECRET_TOKEN}" \

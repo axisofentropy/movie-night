@@ -3,7 +3,6 @@ import subprocess
 from functools import wraps
 from flask import Blueprint, request, current_app, abort, jsonify
 import requests
-import docker # Import the docker library
 
 # ... (Blueprint object and require_token decorator are the same) ...
 movie_api_blueprint = Blueprint('movie_api', __name__)
@@ -49,43 +48,36 @@ def download_movie():
 @require_token
 def start_stream():
     """
-    Webhook to start the ffmpeg container directly using the Docker Python SDK.
+    Configures a mediamtx path with a runOnDemand command to start ffmpeg.
     """
-    movie_path_internal = "/downloads/current_movie.mp4"
-    
-    # This path comes from the startup script env var
-    movies_dir_host = os.environ.get("MOVIES_DIR", "/home/chronos/movies") 
+    movie_path_in_mediamtx = "/movies/current_movie.mp4"
+    path_name = "stream"
 
-    # Check if the movie file exists inside the container
-    if not os.path.exists(movie_path_internal):
-        return jsonify(status="error", message=f"Movie file not found at {movie_path_internal}. Please download it first."), 404
+    # This is the ffmpeg command that mediamtx will run on demand.
+    # It reads from the movie path and publishes to its own RTSP server.
+    ffmpeg_command = (
+        "ffmpeg -re -i " + movie_path_in_mediamtx +
+        " -c:v copy -c:a copy " +
+        "-f rtsp -rtsp_transport tcp rtsp://localhost:8554/" + path_name
+    )
+
+    # This is the JSON payload for the mediamtx API
+    config_payload = {
+        "runOnDemand": ffmpeg_command
+    }
 
     try:
-        # The client will automatically use the DOCKER_HOST env var to connect to the proxy
-        client = docker.from_env()
+        # The webhook now talks to the mediamtx API on the internal docker network
+        mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/patch/{path_name}"
+        
+        print(f"Sending configuration to mediamtx API: {mediamtx_api_url}")
+        response = requests.post(mediamtx_api_url, json=config_payload)
+        response.raise_for_status() # Raise an exception for bad status codes
 
-        # Define the ffmpeg command as a list of strings
-        ffmpeg_command = [
-            "-re", "-i", movie_path_internal,
-            "-c:v", "copy", "-c:a", "copy",
-            "-f", "rtsp", "-rtsp_transport", "tcp", "rtsp://mediamtx:8554/stream"
-        ]
+        return jsonify(
+            status="success",
+            message=f"Stream '{path_name}' is configured. It will start when the first viewer connects."
+        ), 200
 
-        print("Starting ffmpeg container...")
-        # Run the container, translating docker run flags to Python arguments
-        container = client.containers.run(
-            image="linuxserver/ffmpeg",
-            command=ffmpeg_command,
-            name="ffmpeg-streamer",
-            network="movie-night-net",
-            volumes={movies_dir_host: {'bind': '/downloads', 'mode': 'ro'}},
-            auto_remove=True,
-            detach=True  # Run in the background
-        )
-        print(f"Started ffmpeg container with ID: {container.id}")
-        return jsonify(status="success", message="Stream container started.", container_id=container.id), 200
-
-    except docker.errors.APIError as e:
-        return jsonify(status="error", message="Docker API Error.", details=str(e)), 500
-    except Exception as e:
-        return jsonify(status="error", message="An unexpected error occurred.", details=str(e)), 500
+    except requests.exceptions.RequestException as e:
+        return jsonify(status="error", message="Failed to configure mediamtx.", details=str(e)), 500
