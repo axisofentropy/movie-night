@@ -63,7 +63,8 @@ def start_stream():
 
     # This is the JSON payload for the mediamtx API
     config_payload = {
-        "runOnDemand": ffmpeg_command
+        "runOnInit": ffmpeg_command,
+        "runOnInitRestart": "true"
     }
 
     try:
