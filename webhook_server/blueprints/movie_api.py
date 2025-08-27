@@ -71,7 +71,7 @@ def start_stream():
         mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/add/{path_name}"
         
         print(f"Sending configuration to mediamtx API: {mediamtx_api_url}")
-        response = requests.post(mediamtx_api_url, json=config_payload)
+        response = requests.post(mediamtx_api_url, json=config_payload, auth=('admin',''))
         response.raise_for_status() # Raise an exception for bad status codes
 
         return jsonify(

@@ -8,7 +8,7 @@ apiAddress: :9997
 # Allow write access from the private Docker network
 authInternalUsers:
   # Username. 'any' means any user, including anonymous ones.
-- user: any
+- user: admin
   # Password. Not used in case of 'any' user.
   pass:
   # IPs or networks allowed to use this user. An empty list means any IP.
@@ -31,6 +31,15 @@ authInternalUsers:
     path:
   - action: pprof
     path:
+# Allow anonymous users to read streams.
+- user: any
+  pass:
+  ips: []
+  permissions:
+    - action: read
+      path:
+    - action: playback
+      path: 
 
 # Web server (HLS) configuration
 hlsAddress: :443
