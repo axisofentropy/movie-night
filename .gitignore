@@ -245,3 +245,4 @@ project_context.txt
 
 # bullshit
 .DS_Store
+.vscode/settings.json
