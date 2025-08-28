@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Webhook Image CI
 
 on:
   push:
