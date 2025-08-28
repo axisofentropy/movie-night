@@ -58,17 +58,18 @@ def start_stream():
     ffmpeg_command = (
         "ffmpeg -re -i " + movie_path_in_mediamtx +
         " -c:v copy -c:a copy " +
-        "-f rtsp -rtsp_transport tcp rtsp://publish:publish@mediamtx:8554/" + path_name
+        "-f rtsp -rtsp_transport tcp rtsp://admin:admin@mediamtx:8554/" + path_name
     )
 
-    # This is the JSON payload for the mediamtx API
+    # This is the JSON payload for the mediamtx API.
+    # Unfortunately `runOnDemand` does not seem to work for HLS clients.
     config_payload = {
         "runOnInit": ffmpeg_command
     }
 
     try:
         # The webhook now talks to the mediamtx API on the internal docker network
-        mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/add/{path_name}"
+        mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/replace/{path_name}"
         
         print(f"Sending configuration to mediamtx API: {mediamtx_api_url}")
         print(config_payload)

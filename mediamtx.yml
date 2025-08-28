@@ -40,12 +40,6 @@ authInternalUsers:
       path:
     - action: playback
       path: 
-- user: publish
-  pass: publish
-  ips: [127.0.0.1/32, 172.16.0.0/12, 192.168.0.0/16]
-  permissions:
-    - action: publish
-      path:
 
 # Web server (HLS) configuration
 hlsAddress: :443
@@ -54,6 +48,7 @@ hlsEncryption: yes
 #hlsServerCert: /certs/fullchain.pem
 hlsAlwaysRemux: yes
 hlsVariant: fmp4
+hlsSegmentDuration: 3s
 # These CORS headers are required by Chromecast
 hlsAllowOrigin: '*'
 
