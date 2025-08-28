@@ -57,6 +57,12 @@ resource "google_storage_bucket_object" "mediamtx_config" {
   source = "${path.module}/mediamtx.yml"
 }
 
+resource "google_storage_bucket_object" "snipe_movie" {
+  name   = "snipe.mp4"
+  bucket = google_storage_bucket.projector_vm_config.name
+  source = "${path.module}/snipe.mp4"
+}
+
 # --- SERVICE ACCOUNT & IAM ---
 resource "google_service_account" "movie_projector_sa" {
   account_id   = "movie-projector-sa"

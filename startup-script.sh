@@ -132,6 +132,16 @@ curl -s -X GET \
   -o "${MEDIAMTX_CONFIG_DIR}/mediamtx.yml" \
   "https://storage.googleapis.com/storage/v1/b/${STARTUP_BUCKET_NAME}/o/mediamtx.yml?alt=media"
 
+# Download the snipe movie file
+echo "--- Downloading snipe movie ---"
+curl -s -X GET \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -o "${MOVIES_DIR}/snipe.mp4" \
+  "https://storage.googleapis.com/storage/v1/b/${STARTUP_BUCKET_NAME}/o/snipe.mp4?alt=media"
+
+# Set sample movie permissions to read-only for all
+chmod 444 "${MOVIES_DIR}/snipe.mp4"
+
 echo "--- Pulling latest images ---"
 docker pull --quiet "${WEBHOOK_IMAGE_NAME}"
 docker pull --quiet bluenviron/mediamtx:latest-ffmpeg
