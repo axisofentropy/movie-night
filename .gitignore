@@ -246,3 +246,7 @@ project_context.txt
 # bullshit
 .DS_Store
 .vscode/settings.json
+
+# Dynamic Runtime Directories
+movies
+certs

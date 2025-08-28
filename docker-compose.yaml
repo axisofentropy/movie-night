@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    container_name: mediamtx
+    ports:
+      - "443:443"      # HLS (HTTPS)
+      - "8554:8554"    # RTSP
+      - "1935:1935"    # RTMP
+      - "8889:8889"    # WebRTC
+      - "9997:9997"    # API
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+      - ./certs:/certs:ro
+      - ${MOVIES_DIR}:/movies:ro
+    environment:
+      # Pass the dynamic domain to configure the cert path
+      - MTX_HLSSERVERCERT=/certs/live/${DOMAIN}/fullchain.pem
+      - MTX_HLSSERVERKEY=/certs/live/${DOMAIN}/privkey.pem
+    networks:
+      - movie-night-net
+
+  webhook:
+    build:
+      context: ./webhook_server
+    container_name: webhook-server
+    ports:
+      - "4443:443"
+    volumes:
+      # Mounts your local code for live-reloading
+      - ./webhook_server:/app
+      - ./certs:/certs:ro
+      - ${MOVIES_DIR}:/downloads
+    environment:
+      - SECRET_TOKEN=${SECRET_TOKEN}
+      - MOVIES_DIR=${MOVIES_DIR}
+      - DOMAIN=${DOMAIN}
+      # This tells gunicorn to reload when it detects code changes
+      - GUNICORN_CMD_ARGS=--reload
+    networks:
+      - movie-night-net
+    depends_on:
+      - mediamtx
+
+networks:
+  movie-night-net:
+    driver: bridge
