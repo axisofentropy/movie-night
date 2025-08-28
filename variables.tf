@@ -37,5 +37,6 @@ variable "gcp_apis" {
     "storage.googleapis.com",
     "secretmanager.googleapis.com",
     "iam.googleapis.com",
+    "run.googleapis.com",
   ]
 }

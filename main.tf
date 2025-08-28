@@ -94,6 +94,37 @@ resource "google_project_iam_member" "monitoring_writer" {
   member  = "serviceAccount:${google_service_account.movie_projector_sa.email}"
 }
 
+# --- DISCORD BOT SERVICE ACCOUNT & IAM ---
+resource "google_project_iam_custom_role" "mig_scaler" {
+  project     = var.gcp_project_id
+  role_id     = "migScaler"
+  title       = "MIG Scaler Role"
+  description = "Allows resizing a Managed Instance Group"
+  permissions = [
+    "compute.instanceGroupManagers.update",
+  ]
+}
+
+resource "google_service_account" "discord_bot_sa" {
+  account_id   = "discord-bot-sa"
+  display_name = "Service Account for Discord Bot on Cloud Run"
+  depends_on   = [google_project_service.apis]
+}
+
+# Grant the bot SA permission to access its secrets
+resource "google_project_iam_member" "bot_secret_accessor" {
+  project = var.gcp_project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.discord_bot_sa.email}"
+}
+
+# Grant the bot SA permission to scale the GCE instance group
+resource "google_project_iam_member" "bot_mig_scaler" {
+  project = var.gcp_project_id
+  role    = google_project_iam_custom_role.mig_scaler.id # Use the ID of our new custom role
+  member  = "serviceAccount:${google_service_account.discord_bot_sa.email}"
+}
+
 # --- INSTANCE TEMPLATE ---
 resource "google_compute_instance_template" "movie_projector_template" {
   name_prefix  = "movie-projector-template-"
@@ -166,4 +197,94 @@ resource "google_compute_firewall" "allow_movie_night_traffic" {
   }
   source_ranges = ["0.0.0.0/0"]
   depends_on    = [google_project_service.apis]
+}
+
+# --- ARTIFACT REGISTRY REMOTE REPOSITORY ---
+# This resource creates a caching proxy for the GitHub Container Registry.
+resource "google_artifact_registry_repository" "ghcr_remote" {
+  location      = var.gcp_region
+  repository_id = "ghcr-remote"
+  description   = "Remote repository proxy for ghcr.io"
+  format        = "DOCKER"
+  mode          = "REMOTE_REPOSITORY"
+
+  remote_repository_config {
+    docker_repository {
+      # CORRECTED: For custom public registries like GHCR, use the 'custom_repository'
+      # block and provide the upstream URI.
+      custom_repository {
+        uri = "https://ghcr.io"
+      }
+    }
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+# --- CLOUD RUN SERVICE ---
+resource "google_cloud_run_v2_service" "discord_bot" {
+  name     = "discord-bot"
+  location = var.gcp_region
+  depends_on = [
+    google_project_service.apis,
+    google_artifact_registry_repository.ghcr_remote # Ensure repo exists first
+  ]
+
+  template {
+    service_account = google_service_account.discord_bot_sa.email
+
+    containers {
+      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.ghcr_remote.repository_id}/axisofentropy/movie-night-bot:latest"
+      
+      ports {
+        container_port = 8080
+      }
+
+      # --- Environment Variables ---
+      # Set the GCE webhook's public URL
+      env {
+        name  = "GCE_WEBHOOK_URL"
+        value = "https://${var.hostname}.${var.domain_name}:4443"
+      }
+
+      # Securely mount the bot's public key from Secret Manager
+      env {
+        name = "BOT_PUBLIC_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = "discord-bot-public-key"
+            version = "latest"
+          }
+        }
+      }
+
+      # Securely mount the webhook's secret token from Secret Manager
+      env {
+        name = "WEBHOOK_SECRET_TOKEN"
+        value_source {
+          secret_key_ref {
+            secret  = "webhook-secret-token"
+            version = "latest"
+          }
+        }
+      }
+    }
+  }
+}
+
+# --- IAM FOR PUBLIC ACCESS ---
+# This makes the Cloud Run service accessible from the public internet
+# resource "google_cloud_run_v2_service_iam_member" "allow_public_access" {
+#  project  = google_cloud_run_v2_service.discord_bot.project
+#  location = google_cloud_run_v2_service.discord_bot.location
+#  name     = google_cloud_run_v2_service.discord_bot.name
+#  role     = "roles/run.invoker"
+#  member   = "allUsers"
+# }
+
+# --- OUTPUTS ---
+# This will print the bot's public URL after you apply the configuration
+output "discord_bot_url" {
+  description = "The public URL for the Discord bot Cloud Run service."
+  value       = google_cloud_run_v2_service.discord_bot.uri
 }
