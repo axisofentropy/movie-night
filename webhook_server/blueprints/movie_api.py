@@ -58,7 +58,7 @@ def start_stream():
     ffmpeg_command = (
         "ffmpeg -re -i " + movie_path_in_mediamtx +
         " -c:v copy -c:a copy " +
-        "-f rtsp -rtsp_transport tcp rtsp://localhost:8554/" + path_name
+        "-f rtsp -rtsp_transport tcp rtsp://publish:publish@mediamtx:8554/" + path_name
     )
 
     # This is the JSON payload for the mediamtx API
@@ -71,6 +71,7 @@ def start_stream():
         mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/add/{path_name}"
         
         print(f"Sending configuration to mediamtx API: {mediamtx_api_url}")
+        print(config_payload)
         response = requests.post(mediamtx_api_url, json=config_payload, auth=('admin','admin'))
         response.raise_for_status() # Raise an exception for bad status codes
 
