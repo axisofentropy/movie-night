@@ -94,7 +94,7 @@ def start_stream(path_name):
         f" -f rtsp -rtsp_transport tcp rtsp://admin:admin@mediamtx:8554/{path_name}"
     )
 
-    config_payload = { "runOnInit": ffmpeg_command }
+    config_payload = { "runOnDemand": ffmpeg_command }
 
     try:
         mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/replace/{path_name}"
