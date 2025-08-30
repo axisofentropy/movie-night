@@ -38,5 +38,6 @@ variable "gcp_apis" {
     "secretmanager.googleapis.com",
     "iam.googleapis.com",
     "run.googleapis.com",
+    "dns.googleapis.com",
   ]
 }

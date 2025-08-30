@@ -20,6 +20,7 @@ TOKEN=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/com
 
 DOMAIN_NAME=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/domain-name)
 HOSTNAME=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/hostname)
+DNS_ZONE_NAME=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/dns-zone-name)
 DOMAIN="${HOSTNAME}.${DOMAIN_NAME}"
 
 # Function to fetch a secret from Secret Manager
@@ -32,51 +33,59 @@ fetch_secret() {
 }
 
 # Fetch the actual secrets
-GDAPIKEY=$(fetch_secret "${GCP_PROJECT_ID}" "godaddy-api-key")
 SECRET_TOKEN=$(fetch_secret "${GCP_PROJECT_ID}" "webhook-secret-token")
 
 # ==============================================================================
-# 1. DYNAMIC DNS AND CERTIFICATE
+# 1. DYNAMIC DNS (using Cloud DNS)
 # ==============================================================================
-echo "--- Starting Dynamic DNS Check ---"
-MYDOMAIN="${DOMAIN_NAME}"
-MYHOSTNAME="${HOSTNAME}"
-
+echo "--- Starting Cloud DNS Update Check ---"
 MYIP=$(curl -s "https://api.ipify.org")
-DNSDATA=$(curl -s -X GET -H "Authorization: sso-key ${GDAPIKEY}" "https://api.godaddy.com/v1/domains/${MYDOMAIN}/records/A/${MYHOSTNAME}")
-GDIP=$(echo "$DNSDATA" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b")
+RESOLVED_IP=$(curl -s "https://dns.google/resolve?name=${DOMAIN}&type=A" | grep -oE '"data":"(\b([0-9]{1,3}\.){3}[0-9]{1,3}\b)"' | cut -d'"' -f4 | head -n 1)
 
-if [[ "$GDIP" != "$MYIP" && -n "$MYIP" ]]; then
-  echo "IP ${MYIP} has changed from ${GDIP}. Updating GoDaddy DNS record..."
-  curl -s -X PUT "https://api.godaddy.com/v1/domains/${MYDOMAIN}/records/A/${MYHOSTNAME}" \
-    -H "Authorization: sso-key ${GDAPIKEY}" \
+if [[ "${RESOLVED_IP}" != "${MYIP}" && -n "${MYIP}" ]]; then
+  echo "DNS IP ${RESOLVED_IP} does not match VM IP ${MYIP}. Updating Cloud DNS..."
+  
+  # Note the trailing dot on the domain name for the API
+  RECORD_NAME="${DOMAIN}."
+  
+  # Construct the API request body
+  JSON_BODY=$(cat <<EOM
+{
+  "additions": [
+    {
+      "name": "${RECORD_NAME}",
+      "type": "A",
+      "ttl": 60,
+      "rrdatas": ["${MYIP}"]
+    }
+  ],
+  "deletions": [
+    {
+      "name": "${RECORD_NAME}",
+      "type": "A",
+      "ttl": 60,
+      "rrdatas": ["${RESOLVED_IP}"]
+    }
+  ]
+}
+EOM
+)
+  echo "${JSON_BODY}"
+
+  # Call the Cloud DNS API to patch the record set
+  curl -s -X POST \
+    -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
-    -d "[{\"data\": \"${MYIP}\"}]"
+    --data "${JSON_BODY}" \
+    "https://dns.googleapis.com/dns/v1/projects/${GCP_PROJECT_ID}/managedZones/${DNS_ZONE_NAME}/changes"
 
-  # NEW: Wait for DNS to propagate before continuing
-  echo "Waiting for DNS propagation..."
-  TIMEOUT=300 # 5-minute timeout
-  INTERVAL=10
-  END_TIME=$(( $(date +%s) + TIMEOUT ))
-
-  RESOLVED_IP=""
-  while [[ $(date +%s) -lt $END_TIME ]]; do
-    # Use curl to query Google's public DNS API
-    RESOLVED_IP=$(curl -s "https://dns.google/resolve?name=${DOMAIN}&type=A" | grep -oE '"data":"(\b([0-9]{1,3}\.){3}[0-9]{1,3}\b)"' | cut -d'"' -f4 | head -n 1)
-    echo "Checking DNS... Resolved IP for ${DOMAIN} is ${RESOLVED_IP}"
-    if [[ "${RESOLVED_IP}" == "${MYIP}" ]]; then
-      echo "DNS propagation confirmed!"
-      break
-    fi
-    sleep "${INTERVAL}"
-  done
-
-  if [[ "${RESOLVED_IP}" != "${MYIP}" ]]; then
-    echo "DNS propagation timed out after ${TIMEOUT} seconds. Certbot may fail."
-    # Depending on requirements, you could 'exit 1' here.
-  fi
+  echo "Cloud DNS update request sent. Waiting for propagation..."
+  # The DNS propagation check from the previous script is still valid here
+  sleep 10 # Simple wait, or re-add the propagation loop if needed
+else
+  echo "DNS IP ${RESOLVED_IP} already matches VM IP ${MYIP}. No update needed."
 fi
-echo "--- Dynamic DNS Check Complete ---"
+echo "--- Cloud DNS Update Complete ---"
 
 echo "--- Generating a new TLS Certificate with Certbot for ${DOMAIN} ---"
 mkdir -p "${CERT_DIR}"

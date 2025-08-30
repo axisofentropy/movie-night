@@ -94,6 +94,13 @@ resource "google_project_iam_member" "monitoring_writer" {
   member  = "serviceAccount:${google_service_account.movie_projector_sa.email}"
 }
 
+# Grant the VM's service account permission to manage Cloud DNS records.
+resource "google_project_iam_member" "dns_admin" {
+  project = var.gcp_project_id
+  role    = "roles/dns.admin"
+  member  = "serviceAccount:${google_service_account.movie_projector_sa.email}"
+}
+
 # --- DISCORD BOT SERVICE ACCOUNT & IAM ---
 resource "google_project_iam_custom_role" "mig_scaler" {
   project     = var.gcp_project_id
@@ -157,6 +164,7 @@ resource "google_compute_instance_template" "movie_projector_template" {
 
     domain-name               = var.domain_name
     hostname                  = var.hostname
+    dns-zone-name             = google_dns_managed_zone.movie_night_zone.name
   }
 
   lifecycle {
@@ -282,9 +290,33 @@ resource "google_cloud_run_v2_service" "discord_bot" {
 #  member   = "allUsers"
 # }
 
+# --- CLOUD DNS ZONE ---
+# Create a managed zone for your domain.
+resource "google_dns_managed_zone" "movie_night_zone" {
+  name        = "movie-night-zone"
+  dns_name    = "${var.domain_name}." # Note the trailing dot
+  description = "DNS zone for movie night"
+  depends_on  = [google_project_service.apis]
+}
+
+resource "google_dns_record_set" "movie_night_a_record" {
+  name         = "${var.hostname}.${var.domain_name}."
+  type         = "A"
+  # UPDATED: Set a low TTL and a placeholder IP. The startup script will update this.
+  ttl          = 60
+  managed_zone = google_dns_managed_zone.movie_night_zone.name
+  rrdatas      = ["127.0.0.1"]
+}
+
 # --- OUTPUTS ---
 # This will print the bot's public URL after you apply the configuration
 output "discord_bot_url" {
   description = "The public URL for the Discord bot Cloud Run service."
   value       = google_cloud_run_v2_service.discord_bot.uri
+}
+
+# This will print the nameservers you need for GoDaddy.
+output "dns_name_servers" {
+  description = "Nameservers for the Cloud DNS zone."
+  value       = google_dns_managed_zone.movie_night_zone.name_servers
 }
