@@ -34,44 +34,21 @@ def interactions():
     if interaction["type"] == 2: # APPLICATION_COMMAND
         command_name = interaction["data"]["name"]
         
-        if command_name == "download":
-            return handle_download(interaction)
-        elif command_name == "start":
+        if command_name == "start":
             return handle_start(interaction)
 
     return "OK", 200
-
-def handle_download(interaction):
-    # A more robust way to get options: by name
-    options = {opt['name']: opt['value'] for opt in interaction['data']['options']}
-    url = options.get('url')
-    filename = options.get('filename')
-
-    api_response = requests.post(
-        f"{GCE_WEBHOOK_URL}/movie/download",
-        headers={"X-Auth-Token": WEBHOOK_SECRET_TOKEN},
-        json={"url": url, "filename": filename},
-        # verify=False # Use verify=False if your GCE VM has a self-signed or unrecognized cert
-    )
-    
-    if api_response.status_code == 200:
-        data = api_response.json()
-        content = f"✅ **Download complete!**\nFile: `{data['filename']}`\nSize: **{data['fileSize']}**"
-    else:
-        content = f"❌ **Error downloading:**\n`{api_response.text}`"
-
-    return jsonify({"type": 4, "data": {"content": content}})
 
 def handle_start(interaction):
     # A more robust way to get options: by name
     options = {opt['name']: opt['value'] for opt in interaction['data']['options']}
     path_name = options.get('path_name')
-    filename = options.get('filename')
+    url = options.get('url')
 
     api_response = requests.post(
         f"{GCE_WEBHOOK_URL}/movie/start/{path_name}",
         headers={"X-Auth-Token": WEBHOOK_SECRET_TOKEN},
-        json={"filename": filename},
+        json={"url": url},
         # verify=False
     )
 

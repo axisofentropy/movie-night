@@ -18,19 +18,11 @@ headers = {
 
 commands = [
     {
-        "name": "download",
-        "description": "Download a movie to the server.",
-        "options": [
-            {"type": 3, "name": "url", "description": "The URL of the movie file", "required": True},
-            {"type": 3, "name": "filename", "description": "The name to save the file as (e.g., movie.mp4)", "required": True}
-        ]
-    },
-    {
         "name": "start",
-        "description": "Start the movie stream.",
+        "description": "Start streaming a movie from a URL.",
         "options": [
             {"type": 3, "name": "path_name", "description": "The URL path for the stream (e.g., 'movie')", "required": True},
-            {"type": 3, "name": "filename", "description": "The filename of the downloaded movie to stream", "required": True}
+            {"type": 3, "name": "url", "description": "The URL of the movie file to stream", "required": True}
         ]
     }
 ]

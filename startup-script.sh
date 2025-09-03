@@ -6,7 +6,6 @@ set -e
 # 0. FETCH CONFIGURATION AND SECRETS
 # ==============================================================================
 CERT_DIR="/home/chronos/letsencrypt"
-MOVIES_DIR="/home/chronos/movies"
 MEDIAMTX_CONFIG_DIR="/home/chronos/mediamtx"
 
 NETWORK_NAME="movie-night-net"
@@ -123,9 +122,7 @@ fi
 # 2. CONTAINER CONFIGURATION & DEPLOYMENT
 # ==============================================================================
 
-mkdir -p "${MOVIES_DIR}"
 mkdir -p "${MEDIAMTX_CONFIG_DIR}"
-chown chronos:chronos "${MOVIES_DIR}"
 # chown --recursive chronos:chronos "${CERT_DIR}"
 
 echo "--- Cleaning up old containers and networks ---"
@@ -141,16 +138,6 @@ curl -s -X GET \
   -o "${MEDIAMTX_CONFIG_DIR}/mediamtx.yml" \
   "https://storage.googleapis.com/storage/v1/b/${STARTUP_BUCKET_NAME}/o/mediamtx.yml?alt=media"
 
-# Download the snipe movie file
-echo "--- Downloading snipe movie ---"
-curl -s -X GET \
-  -H "Authorization: Bearer ${TOKEN}" \
-  -o "${MOVIES_DIR}/snipe.mp4" \
-  "https://storage.googleapis.com/storage/v1/b/${STARTUP_BUCKET_NAME}/o/snipe.mp4?alt=media"
-
-# Set sample movie permissions to read-only for all
-chmod 444 "${MOVIES_DIR}/snipe.mp4"
-
 echo "--- Pulling latest images ---"
 docker pull --quiet "${WEBHOOK_IMAGE_NAME}"
 docker pull --quiet bluenviron/mediamtx:latest-ffmpeg
@@ -161,7 +148,6 @@ docker run -d --restart=always \
   --network ${NETWORK_NAME} \
   -p 443:443 -p 8554:8554 -p 1935:1935 -p 8889:8889 -p 9997:9997 \
   -v "${MEDIAMTX_CONFIG_DIR}/mediamtx.yml:/mediamtx.yml:ro" \
-  -v "${MOVIES_DIR}:/movies:ro" \
   -v "${CERT_DIR}:/certs:ro" \
   -e MTX_HLSSERVERKEY="/certs/live/${DOMAIN}/privkey.pem" \
   -e MTX_HLSSERVERCERT="/certs/live/${DOMAIN}/fullchain.pem" \
@@ -172,10 +158,8 @@ docker run -d --restart=always \
   --name webhook-server \
   --network ${NETWORK_NAME} \
   -p 4443:443 \
-  -v "${MOVIES_DIR}:/downloads" \
   -v "${CERT_DIR}:/certs:ro" \
   -e SECRET_TOKEN="${SECRET_TOKEN}" \
-  -e MOVIES_DIR="${MOVIES_DIR}" \
   -e DOMAIN="${DOMAIN}" \
   "${WEBHOOK_IMAGE_NAME}"
 

@@ -3,9 +3,6 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Create directory for downloads
-RUN mkdir /downloads
-
 # Copy and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

@@ -13,7 +13,6 @@ services:
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
       - ./certs:/certs:ro
-      - ${MOVIES_DIR}:/movies:ro
     environment:
       # Pass the dynamic domain to configure the cert path
       - MTX_HLSSERVERCERT=/certs/live/${DOMAIN}/fullchain.pem
@@ -31,10 +30,8 @@ services:
       # Mounts your local code for live-reloading
       - ./webhook_server:/app
       - ./certs:/certs:ro
-      - ${MOVIES_DIR}:/downloads
     environment:
       - SECRET_TOKEN=${SECRET_TOKEN}
-      - MOVIES_DIR=${MOVIES_DIR}
       - DOMAIN=${DOMAIN}
       # This tells gunicorn to reload when it detects code changes
       - GUNICORN_CMD_ARGS=--reload
