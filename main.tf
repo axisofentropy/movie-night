@@ -10,12 +10,21 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    discord-interactions = {
+      source  = "roleypoly/discord-interactions"
+      version = "0.1.0"
+    }
   }
 }
 
 provider "google" {
   project = var.gcp_project_id
   region  = var.gcp_region
+}
+
+provider "discord-interactions" {
+  application_id           = var.discord_application_id
+  client_credentials_token = var.discord_client_credentials_token
 }
 
 # --- API ENABLER ---

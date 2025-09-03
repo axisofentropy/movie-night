@@ -41,3 +41,14 @@ variable "gcp_apis" {
     "dns.googleapis.com",
   ]
 }
+
+variable "discord_application_id" {
+  description = "The application ID of the Discord bot."
+  type        = string
+}
+
+variable "discord_client_credentials_token" {
+  description = "The client credentials token for the Discord application."
+  type        = string
+  sensitive   = true
+}
