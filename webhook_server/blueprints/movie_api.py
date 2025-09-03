@@ -29,14 +29,15 @@ def start_stream(path_name):
 
     movie_url = request.json['url']
 
-    # This command uses curl to download the movie and pipes it directly to ffmpeg.
-    # - `curl -L -s "{movie_url}"`: Downloads from the URL, follows redirects (-L), and is silent (-s).
+    # This command uses wget to download the movie and pipes it directly to ffmpeg.
+    # - `wget -q -O - "{movie_url}"`: Downloads from the URL quietly (-q) and outputs to stdout (-O -).
     # - `ffmpeg -re -i pipe:0`: Tells ffmpeg to read from stdin at the native frame rate (-re).
     # - The rest of the command copies the video/audio streams and pushes them to mediamtx via RTSP.
+    # The entire pipeline is wrapped in `sh -c '...'` so that the pipe operator `|` is correctly interpreted.
     ffmpeg_command = (
-        f"curl -L -s \"{movie_url}\" | ffmpeg -re -i pipe:0"
+        f"sh -c 'wget -q -O - \"{movie_url}\" | ffmpeg -re -i pipe:0"
         " -c:v copy -c:a copy"
-        f" -f rtsp -rtsp_transport tcp rtsp://admin:admin@mediamtx:8554/{path_name}"
+        f" -f rtsp -rtsp_transport tcp rtsp://admin:admin@mediamtx:8554/{path_name}'"
     )
 
     config_payload = { "runOnDemand": ffmpeg_command }
