@@ -1,14 +1,14 @@
 import os
 import requests
 
-# Your bot's public Application ID
-APP_ID = "1401758890244444241"
-
 # Get the secret Bot Token from an environment variable
 BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
+APP_ID = os.environ.get("DISCORD_APP_ID")
 
 if not BOT_TOKEN:
     raise ValueError("DISCORD_BOT_TOKEN environment variable not set.")
+if not APP_ID:
+    raise ValueError("DISCORD_APP_ID environment variable not set.")
 
 url = f"https://discord.com/api/v10/applications/{APP_ID}/commands"
 

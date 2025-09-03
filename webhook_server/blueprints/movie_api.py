@@ -96,9 +96,13 @@ def start_stream(path_name):
 
     config_payload = { "runOnDemand": ffmpeg_command }
 
+    mediamtx_user = os.environ.get("MEDIAMTX_API_USER", "admin")
+    mediamtx_pass = os.environ.get("MEDIAMTX_API_PASS", "admin")
+    mediamtx_host = os.environ.get("MEDIAMTX_API_HOST", "mediamtx")
+
     try:
-        mediamtx_api_url = f"http://mediamtx:9997/v3/config/paths/replace/{path_name}"
-        response = requests.post(mediamtx_api_url, json=config_payload, auth=('admin', 'admin'))
+        mediamtx_api_url = f"http://{mediamtx_host}:9997/v3/config/paths/replace/{path_name}"
+        response = requests.post(mediamtx_api_url, json=config_payload, auth=(mediamtx_user, mediamtx_pass))
         response.raise_for_status()
 
         domain = os.environ.get("DOMAIN")
