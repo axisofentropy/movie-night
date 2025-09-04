@@ -316,7 +316,7 @@ resource "google_dns_record_set" "movie_night_a_record" {
 # This will print the bot's public URL after you apply the configuration
 output "discord_bot_url" {
   description = "The public URL for the Discord bot Cloud Run service."
-  value       = google_cloud_run_v2_service.discord_bot.uri
+  value       = "${google_cloud_run_v2_service.discord_bot.uri}/interactions"
 }
 
 # This will print the nameservers you need for GoDaddy.
