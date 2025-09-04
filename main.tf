@@ -285,6 +285,7 @@ resource "google_cloud_run_v2_service" "discord_bot" {
 
 # --- IAM FOR PUBLIC ACCESS ---
 # This makes the Cloud Run service accessible from the public internet
+# https://cloud.google.com/run/docs/authenticating/public#gcloud
 resource "google_cloud_run_v2_service_iam_member" "allow_public_access" {
   project  = google_cloud_run_v2_service.discord_bot.project
   location = google_cloud_run_v2_service.discord_bot.location
