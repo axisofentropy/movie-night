@@ -285,13 +285,13 @@ resource "google_cloud_run_v2_service" "discord_bot" {
 
 # --- IAM FOR PUBLIC ACCESS ---
 # This makes the Cloud Run service accessible from the public internet
-# resource "google_cloud_run_v2_service_iam_member" "allow_public_access" {
-#  project  = google_cloud_run_v2_service.discord_bot.project
-#  location = google_cloud_run_v2_service.discord_bot.location
-#  name     = google_cloud_run_v2_service.discord_bot.name
-#  role     = "roles/run.invoker"
-#  member   = "allUsers"
-# }
+resource "google_cloud_run_v2_service_iam_member" "allow_public_access" {
+  project  = google_cloud_run_v2_service.discord_bot.project
+  location = google_cloud_run_v2_service.discord_bot.location
+  name     = google_cloud_run_v2_service.discord_bot.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
 
 # --- CLOUD DNS ZONE ---
 # Create a managed zone for your domain.
