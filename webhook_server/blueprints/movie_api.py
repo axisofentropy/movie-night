@@ -46,7 +46,7 @@ def start_stream(path_name):
     # - `ffmpeg -re -i "{movie_url}"`: Reads from the URL at the native frame rate (-re).
     # - The rest of the command copies the video/audio streams and pushes them to mediamtx via RTSP.
     ffmpeg_command = (
-        f"ffmpeg -re -i \"{movie_url}\""
+        f"ffmpeg -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -i \"{movie_url}\""
         " -c:v copy -c:a copy"
         f" -f rtsp -rtsp_transport tcp rtsp://admin:admin@mediamtx:8554/{sane_path_name}"
     )
