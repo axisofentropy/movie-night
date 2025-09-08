@@ -75,3 +75,42 @@ def start_stream(path_name):
 
     except requests.exceptions.RequestException as e:
         return jsonify(status="error", message="Failed to configure mediamtx.", details=str(e)), 500
+
+@movie_api_blueprint.route('/status/<path_name>', methods=['GET'])
+@require_token
+def get_stream_status(path_name):
+    """
+    Gets the status of a specific stream from mediamtx.
+    """
+    sane_path_name = secure_filename(path_name)
+    if not sane_path_name:
+        abort(400, description="Bad Request: Invalid path_name.")
+
+    mediamtx_user = os.environ.get("MEDIAMTX_API_USER", "admin")
+    mediamtx_pass = os.environ.get("MEDIAMTX_API_PASS", "admin")
+    mediamtx_host = os.environ.get("MEDIAMTX_API_HOST", "mediamtx")
+
+    try:
+        mediamtx_api_url = f"http://{mediamtx_host}:9997/v3/paths/get/{sane_path_name}"
+        response = requests.get(mediamtx_api_url, auth=(mediamtx_user, mediamtx_pass))
+        response.raise_for_status()
+
+        path_data = response.json()
+
+        # Extract the relevant fields
+        status_info = {
+            "name": path_data.get("name"),
+            "ready": path_data.get("ready", False),
+            "readyTime": path_data.get("readyTime"),
+            "tracks": path_data.get("tracks"),
+            "bytesSent": path_data.get("bytesSent"),
+            "bytesReceived": path_data.get("bytesReceived"),
+        }
+
+        return jsonify(status_info), 200
+
+    except requests.exceptions.RequestException as e:
+        # Handle cases where the path doesn't exist (404) or other API errors
+        if e.response is not None and e.response.status_code == 404:
+            return jsonify(status="error", message=f"Stream '{sane_path_name}' not found."), 404
+        return jsonify(status="error", message="Failed to get stream status from mediamtx.", details=str(e)), 500
