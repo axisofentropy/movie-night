@@ -97,14 +97,14 @@ def get_stream_status(path_name):
 
         path_data = response.json()
 
-        # Extract the relevant fields
+        # Extract the relevant fields, providing defaults for robustness
         status_info = {
-            "name": path_data.get("name"),
+            "name": path_data.get("name", sane_path_name),
             "ready": path_data.get("ready", False),
-            "readyTime": path_data.get("readyTime"),
-            "tracks": path_data.get("tracks"),
-            "bytesSent": path_data.get("bytesSent"),
-            "bytesReceived": path_data.get("bytesReceived"),
+            "readyTime": path_data.get("readyTime", None),
+            "tracks": path_data.get("tracks", []),
+            "bytesSent": path_data.get("bytesSent", 0),
+            "bytesReceived": path_data.get("bytesReceived", 0),
         }
 
         return jsonify(status_info), 200
