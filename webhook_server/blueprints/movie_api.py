@@ -47,7 +47,7 @@ def start_stream(path_name):
     # - The rest of the command copies the video/audio streams and pushes them to mediamtx via RTSP.
     ffmpeg_command = (
         f"ffmpeg -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -re -i \"{movie_url}\""
-        " -c:v copy -c:a copy -async 1"
+        " -c:v copy -c:a aac -async 1"
         f" -f rtsp -rtsp_transport tcp rtsp://admin:admin@mediamtx:8554/{sane_path_name}"
     )
 
