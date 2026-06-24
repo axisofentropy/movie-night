@@ -206,7 +206,7 @@ resource "google_compute_firewall" "allow_movie_night_traffic" {
     # Port 80 (Certbot), 443 (mediamtx), 4443 (webhook), 8554 (RTSP)
     ports    = ["80", "443", "4443", "8554"]
   }
-  source_ranges = ["0.0.0.0/0"]
+  source_ranges = ["<specific-ip-range>"]
   depends_on    = [google_project_service.apis]
 }
 
