@@ -2,16 +2,47 @@
 
 # Usage Check
 if [ -z "$1" ]; then
-    echo "Usage: ./prepare_hls.sh <input_video_file>"
+    echo "Usage: ./prepare_hls.sh <input_video_file> [subtitle_file_or_index]"
     exit 1
 fi
 
 INPUT_FILE="$1"
+SUB_ARG="$2"
 FILENAME=$(basename -- "$INPUT_FILE")
-EXTENSION="${FILENAME##*.}"
 BASENAME="${FILENAME%.*}"
 OUTPUT_FILE="${BASENAME}_hls_ready.mp4"
 LOG_PREFIX="${BASENAME}_ffmpeg_log"
+
+# SUBTITLE FILTER CONFIGURATION
+FILTER_ARGS=""
+MAP_ARGS=""
+SUB_INFO="None"
+
+if [ -n "$SUB_ARG" ]; then
+    if [[ "$SUB_ARG" =~ ^[0-9]+$ ]]; then
+        # Detect subtitle codec (e.g., subrip vs hdmv_pgs_subtitle)
+        SUB_CODEC=$(ffprobe -v error -select_streams s:"$SUB_ARG" -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "$INPUT_FILE")
+        
+        if [[ "$SUB_CODEC" == "hdmv_pgs_subtitle" || "$SUB_CODEC" == "dvd_subtitle" || "$SUB_CODEC" == "dvdsub" ]]; then
+            # Image-based subtitles (PGS from Blu-ray or DVD sub) cannot be processed by the text 'subtitles' filter.
+            # We use filter_complex to overlay the bitmap image onto the main video stream [0:v:0].
+            FILTER_ARGS="-filter_complex [0:v:0][0:s:${SUB_ARG}]overlay[v]"
+            MAP_ARGS="-map [v]"
+            SUB_INFO="Embedded Image Track $SUB_ARG ($SUB_CODEC)"
+        else
+            # Text-based subtitles (SRT, ASS, VTT).
+            # Escape single quotes and colons in the file path to prevent FFmpeg filter parsing errors.
+            ESCAPED_INPUT=$(echo "$INPUT_FILE" | sed "s/'/\\\\'/g" | sed 's/:/\\:/g')
+            FILTER_ARGS="-vf subtitles='${ESCAPED_INPUT}':si=${SUB_ARG}"
+            SUB_INFO="Embedded Text Track $SUB_ARG ($SUB_CODEC)"
+        fi
+    else
+        # External subtitle file (e.g. .srt or .ass file path provided)
+        ESCAPED_SUB=$(echo "$SUB_ARG" | sed "s/'/\\\\'/g" | sed 's/:/\\:/g')
+        FILTER_ARGS="-vf subtitles='${ESCAPED_SUB}'"
+        SUB_INFO="External File ($SUB_ARG)"
+    fi
+fi
 
 # 1. DETECT FRAMERATE (FPS)
 # We use ffprobe to get the specific fraction (e.g., 24000/1001 for 23.976fps)
@@ -24,19 +55,23 @@ GOP_SIZE=$(echo "$FPS_RAW" | awk -F'/' '{ val=($1/$2)*2; print int(val + 0.5) }'
 
 echo "------------------------------------------------"
 echo "Input File:    $INPUT_FILE"
+echo "Subtitles:     $SUB_INFO"
 echo "Detected FPS:  $FPS_RAW"
 echo "Calculated GOP:$GOP_SIZE (2-second interval)"
 echo "Target Bitrate: 2500k (Max 2500k, Buf 5000k)"
-echo "Audio:         Stereo Mixdown + Loudnorm"
+echo "Audio:         Stereo Mixdown + Loudnorm + Sync Fix"
 echo "B-Frames:      Disabled (-bf 0)"
 echo "------------------------------------------------"
 
 # 3. PASS 1 (Analysis)
 # -an: Disable audio (saves time, audio doesn't affect video pass 1 analysis)
-# -bf 0: Disable B-frames
+# -bf 0: Disable B-frames for lower decoding overhead and lower latency
+# -fps_mode cfr: Force Constant Frame Rate to prevent timestamp drift
+# -avoid_negative_ts make_zero: Reset timestamps to 0 to prevent A/V sync issues in HLS
 # -f null /dev/null: Discard output, we only want the log file
 echo "Starting Pass 1 (Analysis)..."
 ffmpeg -y -i "$INPUT_FILE" \
+    $FILTER_ARGS $MAP_ARGS \
     -c:v libx264 -preset slow \
     -b:v 2500k -maxrate 2500k -bufsize 5000k \
     -pass 1 -passlogfile "$LOG_PREFIX" \
@@ -54,10 +89,14 @@ if [ $? -ne 0 ]; then
 fi
 
 # 4. PASS 2 (Encoding)
-# Includes Audio processing (-ac 2 for stereo, loudnorm)
-# -bf 0: Disable B-frames
+# Includes Audio processing:
+# -c:a aac -b:a 192k: AAC audio codec at 192kbps
+# -ac 2 -ar 48000: Downmix multi-channel audio to stereo at 48kHz
+# -af "aresample=async=1,loudnorm": Stretch/squeeze audio timestamps for strict sync + volume normalization
+# -movflags +faststart: Move metadata to the beginning of the file for instant streaming start
 echo "Starting Pass 2 (Encoding)..."
 ffmpeg -y -i "$INPUT_FILE" \
+    $FILTER_ARGS $MAP_ARGS \
     -c:v libx264 -preset slow \
     -b:v 2500k -maxrate 2500k -bufsize 5000k \
     -pass 2 -passlogfile "$LOG_PREFIX" \
@@ -66,7 +105,7 @@ ffmpeg -y -i "$INPUT_FILE" \
     -r "$FPS_RAW" -fps_mode cfr -g "$GOP_SIZE" -keyint_min "$GOP_SIZE" -sc_threshold 0 \
     -bf 0 \
     -avoid_negative_ts make_zero \
-    -c:a aac -b:a 192k -ac 2 -ar 48000 -af "aresample=async=1,loudnorm"  \
+    -c:a aac -b:a 192k -ac 2 -ar 48000 -af "aresample=async=1,loudnorm" \
     -movflags +faststart \
     "$OUTPUT_FILE"
 
