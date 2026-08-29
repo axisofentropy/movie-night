@@ -24,10 +24,11 @@ if [ -n "$SUB_ARG" ]; then
         SUB_CODEC=$(ffprobe -v error -select_streams s:"$SUB_ARG" -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "$INPUT_FILE")
         
         if [[ "$SUB_CODEC" == "hdmv_pgs_subtitle" || "$SUB_CODEC" == "dvd_subtitle" || "$SUB_CODEC" == "dvdsub" ]]; then
-            # Image-based subtitles (PGS from Blu-ray or DVD sub) cannot be processed by the text 'subtitles' filter.
-            # We use filter_complex to overlay the bitmap image onto the main video stream [0:v:0].
+            # Image-based subtitles (PGS/DVD) require explicit video and audio stream mapping.
+            # -map [v] maps the overlay filter video output.
+            # -map 0:a:0? explicitly maps the first audio stream from the input file.
             FILTER_ARGS="-filter_complex [0:v:0][0:s:${SUB_ARG}]overlay[v]"
-            MAP_ARGS="-map [v]"
+            MAP_ARGS="-map [v] -map 0:a:0?"
             SUB_INFO="Embedded Image Track $SUB_ARG ($SUB_CODEC)"
         else
             # Text-based subtitles (SRT, ASS, VTT).
