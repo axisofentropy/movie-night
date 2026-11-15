@@ -77,7 +77,7 @@ ffmpeg -y -i "$INPUT_FILE" \
     -b:v 2500k -maxrate 2500k -bufsize 5000k \
     -pass 1 -passlogfile "$LOG_PREFIX" \
     -pix_fmt yuv420p \
-    -profile:v high -level 4.2 \
+    -profile:v high -level 4.1 \
     -r "$FPS_RAW" -fps_mode cfr -g "$GOP_SIZE" -keyint_min "$GOP_SIZE" -sc_threshold 0 \
     -bf 0 \
     -avoid_negative_ts make_zero \
@@ -102,7 +102,7 @@ ffmpeg -y -i "$INPUT_FILE" \
     -b:v 2500k -maxrate 2500k -bufsize 5000k \
     -pass 2 -passlogfile "$LOG_PREFIX" \
     -pix_fmt yuv420p \
-    -profile:v high -level 4.2 \
+    -profile:v high -level 4.1 \
     -r "$FPS_RAW" -fps_mode cfr -g "$GOP_SIZE" -keyint_min "$GOP_SIZE" -sc_threshold 0 \
     -bf 0 \
     -avoid_negative_ts make_zero \
