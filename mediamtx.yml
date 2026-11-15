@@ -49,8 +49,8 @@ hlsEncryption: yes
 
 # hlsAlwaysRemux must be disabled for the `runOnDemand` hook to succeed: https://github.com/bluenviron/mediamtx/issues/3954
 hlsAlwaysRemux: no
-hlsVariant: fmp4
-hlsSegmentDuration: 3s
+hlsVariant: mpegts
+hlsSegmentDuration: 2s
 # These CORS headers are required by Chromecast
 hlsAllowOrigin: '*'
 
