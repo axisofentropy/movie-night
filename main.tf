@@ -24,7 +24,8 @@ provider "google" {
 
 provider "discord-interactions" {
   application_id           = var.discord_application_id
-  client_credentials_token = var.discord_client_credentials_token
+  #client_credentials_token = var.discord_client_credentials_token
+  bot_token = var.discord_client_credentials_token
 }
 
 # --- API ENABLER ---

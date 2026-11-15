@@ -48,7 +48,7 @@ variable "discord_application_id" {
 }
 
 variable "discord_client_credentials_token" {
-  description = "The client credentials token for the Discord application."
+  description = "The 'bot token' for the Discord application."
   type        = string
   sensitive   = true
 }

@@ -1,6 +1,7 @@
 resource "discord-interactions_global_command" "start" {
   name        = "start"
   description = "Start streaming a movie from a URL."
+  default_permission = true
 
   option {
     type        = 3 # STRING
