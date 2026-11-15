@@ -190,6 +190,7 @@ resource "google_compute_instance_group_manager" "movie_projector_mig" {
   lifecycle {
     ignore_changes = [
         target_size,
+        version["name"],
     ]
   }
 
@@ -281,6 +282,13 @@ resource "google_cloud_run_v2_service" "discord_bot" {
       }
     }
   }
+
+  lifecycle {
+    ignore_changes = [
+      client,
+      template[0].containers["name"]
+    ]
+  }
 }
 
 # --- IAM FOR PUBLIC ACCESS ---
@@ -310,6 +318,12 @@ resource "google_dns_record_set" "movie_night_a_record" {
   ttl          = 60
   managed_zone = google_dns_managed_zone.movie_night_zone.name
   rrdatas      = ["127.0.0.1"]
+
+  lifecycle {
+    ignore_changes = [
+      rrdatas,
+    ]
+  }
 }
 
 # --- OUTPUTS ---
